@@ -8,6 +8,13 @@ export interface Piece {
   collided: boolean;
 }
 
+export interface Theme {
+  id: string;
+  name: string;
+  colors: Record<string, string>;
+  description: string;
+}
+
 export interface GameState {
   grid: (string | 0)[][];
   activePiece: Piece;
@@ -17,6 +24,7 @@ export interface GameState {
   gameOver: boolean;
   isPaused: boolean;
   aiHint: string;
+  theme: string;
 }
 
 export type MoveDirection = { x: number; y: number };

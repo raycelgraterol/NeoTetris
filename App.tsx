@@ -3,10 +3,10 @@ import React, { useState, useEffect, useCallback, useRef } from 'react';
 import Board from './components/Board';
 import Controls from './components/Controls';
 import { createGrid, checkCollision, rotate } from './utils';
-import { COLS, ROWS, TETROMINOS, getRandomTetromino, LEVEL_SPEEDS } from './constants';
+import { COLS, ROWS, TETROMINOS, getRandomTetromino, LEVEL_SPEEDS, THEMES } from './constants';
 import { Piece, GameState } from './types';
 import { getTetrisTip } from './services/geminiService';
-import { Trophy, Zap, Ghost, RefreshCw, Info } from 'lucide-react';
+import { Trophy, Zap, Ghost, RefreshCw, Info, Mountain, Heart, Diamond, Star, Globe } from 'lucide-react';
 
 const App: React.FC = () => {
   const [grid, setGrid] = useState<(string | 0)[][]>(createGrid());
@@ -17,9 +17,27 @@ const App: React.FC = () => {
   const [gameOver, setGameOver] = useState(false);
   const [isPaused, setIsPaused] = useState(false);
   const [aiHint, setAiHint] = useState("¡Bienvenido a Neon Tetris!");
+  const [currentTheme, setCurrentTheme] = useState('earth');
 
   const dropTimeRef = useRef<number | null>(LEVEL_SPEEDS[0]);
   const gameLoopRef = useRef<number | null>(null);
+
+  // Apply Theme Colors
+  useEffect(() => {
+    const theme = THEMES[currentTheme];
+    if (theme) {
+      // Clean up classes
+      Object.keys(THEMES).forEach(id => {
+        document.body.classList.remove(`theme-${id}`);
+      });
+      // Add current theme class
+      document.body.classList.add(`theme-${currentTheme}`);
+
+      Object.entries(theme.colors).forEach(([key, value]) => {
+        document.documentElement.style.setProperty(`--color-${key}`, value);
+      });
+    }
+  }, [currentTheme]);
 
   // AI Update
   useEffect(() => {
@@ -105,7 +123,7 @@ const App: React.FC = () => {
   const handleRotate = () => {
     const clonedPiece = JSON.parse(JSON.stringify(activePiece));
     clonedPiece.shape = rotate(clonedPiece.shape, 1);
-    
+
     // Simple wall kick
     const pos = clonedPiece.pos.x;
     let offset = 1;
@@ -178,6 +196,14 @@ const App: React.FC = () => {
     setAiHint("¡Suerte en esta nueva partida!");
   };
 
+  const themeIcons = {
+    earth: <Mountain size={18} />,
+    pink: <Heart size={18} />,
+    metallic: <Diamond size={18} />,
+    space: <Star size={18} />,
+    planets: <Globe size={18} />,
+  };
+
   return (
     <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-4 relative overflow-hidden">
       {/* Background Decor */}
@@ -194,6 +220,27 @@ const App: React.FC = () => {
       <div className="flex flex-col md:flex-row gap-8 items-start z-10 w-full max-w-6xl justify-center">
         {/* Left Side: Stats */}
         <div className="hidden md:flex flex-col gap-6 w-48">
+          <div className="p-4 bg-white/5 neon-border rounded-xl backdrop-blur-md">
+            <div className="text-[10px] font-orbitron text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2">
+              <RefreshCw size={12} className="animate-spin-slow" /> ESCOGE TU PIEL
+            </div>
+            <div className="grid grid-cols-3 gap-2">
+              {(Object.keys(THEMES) as Array<keyof typeof themeIcons>).map(themeId => (
+                <button
+                  key={themeId}
+                  onClick={() => setCurrentTheme(themeId)}
+                  className={`p-2 rounded-lg flex items-center justify-center transition-all ${currentTheme === themeId
+                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
+                    : 'bg-white/5 text-gray-500 border border-transparent hover:bg-white/10 hover:text-gray-300'
+                    }`}
+                  title={THEMES[themeId].name}
+                >
+                  {themeIcons[themeId]}
+                </button>
+              ))}
+            </div>
+          </div>
+
           <div className="p-4 bg-white/5 neon-border rounded-xl backdrop-blur-md">
             <div className="flex items-center gap-2 mb-2 text-cyan-400">
               <Trophy size={20} />
@@ -222,7 +269,7 @@ const App: React.FC = () => {
         {/* Center: Board */}
         <div className="relative group">
           <Board grid={displayGrid} />
-          
+
           {/* Pause/GameOver Overlay */}
           {(isPaused || gameOver) && (
             <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm rounded-lg border border-white/10">
@@ -230,7 +277,7 @@ const App: React.FC = () => {
                 <>
                   <h2 className="text-4xl font-orbitron text-red-500 mb-4 animate-pulse">GAME OVER</h2>
                   <div className="text-xl text-gray-300 mb-8">Score: {score}</div>
-                  <button 
+                  <button
                     onClick={resetGame}
                     className="flex items-center gap-3 px-8 py-3 bg-cyan-600/30 border border-cyan-500 rounded-full hover:bg-cyan-500/50 transition-all font-orbitron text-lg"
                   >
@@ -240,7 +287,7 @@ const App: React.FC = () => {
               ) : (
                 <>
                   <h2 className="text-4xl font-orbitron text-yellow-500 mb-8">PAUSED</h2>
-                  <button 
+                  <button
                     onClick={() => setIsPaused(false)}
                     className="px-12 py-4 bg-yellow-600/30 border border-yellow-500 rounded-full hover:bg-yellow-500/50 transition-all font-orbitron text-xl"
                   >
@@ -260,25 +307,41 @@ const App: React.FC = () => {
               <span className="font-orbitron text-xs">NEXT</span>
             </div>
             <div className="grid grid-cols-4 gap-1 place-items-center h-16">
-               {nextPiece.shape.map((row, y) => 
-                 row.map((cell, x) => cell !== 0 && (
-                   <div key={`${y}-${x}`} className={`w-3 h-3 block-${nextPiece.type} border border-white/20`} 
-                     style={{ gridRow: y + 1, gridColumn: x + 1 }}
-                   />
-                 ))
-               )}
+              {nextPiece.shape.map((row, y) =>
+                row.map((cell, x) => cell !== 0 && (
+                  <div key={`${y}-${x}`} className={`w-3 h-3 block-${nextPiece.type} border border-white/20`}
+                    style={{ gridRow: y + 1, gridColumn: x + 1 }}
+                  />
+                ))
+              )}
             </div>
           </div>
 
           <div className="md:hidden flex flex-col gap-2 flex-1">
-             <div className="flex justify-between p-2 bg-white/5 rounded-lg border border-white/10">
-                <span className="text-xs font-orbitron text-cyan-400">SCORE</span>
-                <span className="text-sm font-orbitron">{score}</span>
-             </div>
-             <div className="flex justify-between p-2 bg-white/5 rounded-lg border border-white/10">
-                <span className="text-xs font-orbitron text-purple-400">LEVEL</span>
-                <span className="text-sm font-orbitron">{level}</span>
-             </div>
+            <div className="flex justify-between p-2 bg-white/5 rounded-lg border border-white/10">
+              <span className="text-xs font-orbitron text-cyan-400">SCORE</span>
+              <span className="text-sm font-orbitron">{score}</span>
+            </div>
+            <div className="flex justify-between p-2 bg-white/5 rounded-lg border border-white/10">
+              <span className="text-xs font-orbitron text-purple-400">LEVEL</span>
+              <span className="text-sm font-orbitron">{level}</span>
+            </div>
+
+            {/* Mobile Skin Selector */}
+            <div className="flex gap-2 mt-1 overflow-x-auto pb-1 no-scrollbar">
+              {(Object.keys(THEMES) as Array<keyof typeof themeIcons>).map(themeId => (
+                <button
+                  key={themeId}
+                  onClick={() => setCurrentTheme(themeId)}
+                  className={`p-2 min-w-[36px] rounded-lg flex items-center justify-center transition-all ${currentTheme === themeId
+                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50'
+                    : 'bg-white/5 text-gray-500 border border-transparent hover:bg-white/10'
+                    }`}
+                >
+                  {themeIcons[themeId]}
+                </button>
+              ))}
+            </div>
           </div>
 
           <div className="hidden md:block text-xs text-gray-500 mt-4 leading-relaxed font-medium">
@@ -291,11 +354,11 @@ const App: React.FC = () => {
         </div>
       </div>
 
-      <Controls 
-        onMove={move} 
-        onRotate={handleRotate} 
-        onDrop={drop} 
-        onPause={() => setIsPaused(!isPaused)} 
+      <Controls
+        onMove={move}
+        onRotate={handleRotate}
+        onDrop={drop}
+        onPause={() => setIsPaused(!isPaused)}
         isPaused={isPaused}
       />
 

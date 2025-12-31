@@ -1,5 +1,5 @@
 
-import { Shape, Piece } from './types';
+import { Shape, Piece, Theme } from './types';
 
 export const COLS = 10;
 export const ROWS = 20;
@@ -62,6 +62,79 @@ export const TETROMINOS: Record<string, { shape: Shape; color: string }> = {
     ],
     color: '240, 0, 0',
   },
+};
+
+export const THEMES: Record<string, Theme> = {
+  earth: {
+    id: 'earth',
+    name: 'Tierra',
+    description: 'Colores orgánicos y naturales de nuestro planeta.',
+    colors: {
+      I: '#2D5A27', // Bosque profundo
+      J: '#1A4D64', // Océano
+      L: '#8B4513', // Tierra/Madera
+      O: '#F4A460', // Arena
+      S: '#556B2F', // Musgo
+      T: '#808080', // Piedra
+      Z: '#A52A2A', // Arcilla
+    }
+  },
+  pink: {
+    id: 'pink',
+    name: 'Mujeres (Pink)',
+    description: 'Tonos rosados y vibrantes con elegancia.',
+    colors: {
+      I: '#FF1493',
+      J: '#FF69B4',
+      L: '#FFB6C1',
+      O: '#FFC0CB',
+      S: '#DB7093',
+      T: '#C71585',
+      Z: '#E0115F',
+    }
+  },
+  metallic: {
+    id: 'metallic',
+    name: 'Metálico',
+    description: 'Brillo industrial y materiales preciosos.',
+    colors: {
+      I: '#D4AF37', // Oro
+      J: '#C0C0C0', // Plata
+      L: '#CD7F32', // Bronce
+      O: '#E5E4E2', // Platino
+      S: '#A5A9B4', // Acero
+      T: '#43464B', // Hierro
+      Z: '#B87333', // Cobre
+    }
+  },
+  space: {
+    id: 'space',
+    name: 'Espacio',
+    description: 'Nebulosas, estrellas y el vacío profundo.',
+    colors: {
+      I: '#4B0082', // Indigo
+      J: '#000080', // Marina
+      L: '#9400D3', // Violeta
+      O: '#000033', // Espacio profundo
+      S: '#8A2BE2', // Azul violeta
+      T: '#9932CC', // Orquídea oscuro
+      Z: '#483D8B', // Azul pizarra oscuro
+    }
+  },
+  planets: {
+    id: 'planets',
+    name: 'Planetas',
+    description: 'Los gigantes de nuestro sistema solar.',
+    colors: {
+      I: '#A5A5A5', // Mercurio
+      J: '#E3BB76', // Venus
+      L: '#2271B3', // Tierra
+      O: '#E27B58', // Marte
+      S: '#D39C7E', // Júpiter
+      T: '#C5AB6E', // Saturno
+      Z: '#BBE1E4', // Urano
+    }
+  }
 };
 
 export const getRandomTetromino = (): Piece => {
