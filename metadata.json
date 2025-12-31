@@ -1,0 +1,5 @@
+{
+  "name": "Neon Tetris AI",
+  "description": "A vibrant, neon-themed Tetris game with 10 difficulty levels and an AI assistant that provides real-time strategy tips using Gemini.",
+  "requestFramePermissions": []
+}
