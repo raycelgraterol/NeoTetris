@@ -4,7 +4,7 @@ import Board from './components/Board';
 import Controls from './components/Controls';
 import { createGrid, checkCollision, rotate } from './utils';
 import { COLS, ROWS, TETROMINOS, getRandomTetromino, LEVEL_SPEEDS, THEMES } from './constants';
-import { Piece, GameState } from './types';
+import { Piece } from './types';
 import { getTetrisTip } from './services/geminiService';
 import { Trophy, Zap, Ghost, RefreshCw, Info, Mountain, Heart, Diamond, Star, Globe } from 'lucide-react';
 
@@ -19,20 +19,19 @@ const App: React.FC = () => {
   const [aiHint, setAiHint] = useState("¡Bienvenido a Neon Tetris!");
   const [currentTheme, setCurrentTheme] = useState('earth');
 
-  const dropTimeRef = useRef<number | null>(LEVEL_SPEEDS[0]);
   const gameLoopRef = useRef<number | null>(null);
 
-  // Apply Theme Colors
+  // Ref to always have the latest drop function in the game loop without restarting the interval
+  const dropRef = useRef<() => void>(() => { });
+
+  // Update theme colors
   useEffect(() => {
     const theme = THEMES[currentTheme];
     if (theme) {
-      // Clean up classes
       Object.keys(THEMES).forEach(id => {
         document.body.classList.remove(`theme-${id}`);
       });
-      // Add current theme class
       document.body.classList.add(`theme-${currentTheme}`);
-
       Object.entries(theme.colors).forEach(([key, value]) => {
         document.documentElement.style.setProperty(`--color-${key}`, value);
       });
@@ -50,7 +49,6 @@ const App: React.FC = () => {
     }
   }, [level, gameOver]);
 
-  // Merge piece with grid
   const mergePiece = useCallback(() => {
     const newGrid = grid.map(row => [...row]);
     activePiece.shape.forEach((row, y) => {
@@ -65,7 +63,6 @@ const App: React.FC = () => {
       });
     });
 
-    // Check lines
     let linesCleared = 0;
     const sweptGrid = newGrid.reduce((acc, row) => {
       if (row.every(cell => cell !== 0)) {
@@ -86,7 +83,6 @@ const App: React.FC = () => {
 
     setGrid(sweptGrid);
 
-    // Spawn new piece
     const nextP = nextPiece;
     if (checkCollision(nextP, sweptGrid, { x: 0, y: 0 })) {
       setGameOver(true);
@@ -110,7 +106,11 @@ const App: React.FC = () => {
     }
   }, [activePiece, grid, gameOver, isPaused, mergePiece]);
 
-  // Movement handlers
+  // Update dropRef every time drop changes
+  useEffect(() => {
+    dropRef.current = drop;
+  }, [drop]);
+
   const move = (dir: number) => {
     if (!checkCollision(activePiece, grid, { x: dir, y: 0 })) {
       setActivePiece(prev => ({
@@ -124,32 +124,24 @@ const App: React.FC = () => {
     const clonedPiece = JSON.parse(JSON.stringify(activePiece));
     clonedPiece.shape = rotate(clonedPiece.shape, 1);
 
-    // Simple wall kick
-    const pos = clonedPiece.pos.x;
     let offset = 1;
     while (checkCollision(clonedPiece, grid, { x: 0, y: 0 })) {
       clonedPiece.pos.x += offset;
       offset = -(offset + (offset > 0 ? 1 : -1));
-      if (offset > clonedPiece.shape[0].length) {
-        // can't rotate
-        return;
-      }
+      if (offset > clonedPiece.shape[0].length) return;
     }
     setActivePiece(clonedPiece);
   };
 
-  // Keyboard controls
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (gameOver) return;
-
       if (e.key === 'ArrowLeft') move(-1);
       if (e.key === 'ArrowRight') move(1);
       if (e.key === 'ArrowDown') drop();
       if (e.key === 'ArrowUp') handleRotate();
       if (e.key === 'p' || e.key === 'P') setIsPaused(prev => !prev);
     };
-
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
   }, [activePiece, grid, gameOver, drop]);
@@ -163,15 +155,14 @@ const App: React.FC = () => {
 
     const interval = LEVEL_SPEEDS[level - 1];
     gameLoopRef.current = window.setInterval(() => {
-      drop();
+      dropRef.current();
     }, interval);
 
     return () => {
       if (gameLoopRef.current) clearInterval(gameLoopRef.current);
     };
-  }, [drop, level, gameOver, isPaused]);
+  }, [level, gameOver, isPaused]);
 
-  // View Grid with active piece
   const displayGrid = grid.map(row => [...row]);
   activePiece.shape.forEach((row, y) => {
     row.forEach((value, x) => {
@@ -206,7 +197,6 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-[#050505] flex flex-col items-center justify-center p-4 relative overflow-hidden">
-      {/* Background Decor */}
       <div className="absolute top-[-10%] left-[-10%] w-[40%] h-[40%] bg-cyan-500/10 rounded-full blur-[120px]" />
       <div className="absolute bottom-[-10%] right-[-10%] w-[40%] h-[40%] bg-purple-500/10 rounded-full blur-[120px]" />
 
@@ -218,7 +208,6 @@ const App: React.FC = () => {
       </header>
 
       <div className="flex flex-col md:flex-row gap-8 items-start z-10 w-full max-w-6xl justify-center">
-        {/* Left Side: Stats */}
         <div className="hidden md:flex flex-col gap-6 w-48">
           <div className="p-4 bg-white/5 neon-border rounded-xl backdrop-blur-md">
             <div className="text-[10px] font-orbitron text-gray-400 mb-3 uppercase tracking-wider flex items-center gap-2">
@@ -230,8 +219,8 @@ const App: React.FC = () => {
                   key={themeId}
                   onClick={() => setCurrentTheme(themeId)}
                   className={`p-2 rounded-lg flex items-center justify-center transition-all ${currentTheme === themeId
-                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
-                    : 'bg-white/5 text-gray-500 border border-transparent hover:bg-white/10 hover:text-gray-300'
+                      ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50 shadow-[0_0_10px_rgba(34,211,238,0.2)]'
+                      : 'bg-white/5 text-gray-500 border border-transparent hover:bg-white/10 hover:text-gray-300'
                     }`}
                   title={THEMES[themeId].name}
                 >
@@ -266,31 +255,22 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        {/* Center: Board */}
         <div className="relative group">
           <Board grid={displayGrid} />
-
-          {/* Pause/GameOver Overlay */}
           {(isPaused || gameOver) && (
             <div className="absolute inset-0 z-20 flex flex-col items-center justify-center bg-black/80 backdrop-blur-sm rounded-lg border border-white/10">
               {gameOver ? (
                 <>
                   <h2 className="text-4xl font-orbitron text-red-500 mb-4 animate-pulse">GAME OVER</h2>
                   <div className="text-xl text-gray-300 mb-8">Score: {score}</div>
-                  <button
-                    onClick={resetGame}
-                    className="flex items-center gap-3 px-8 py-3 bg-cyan-600/30 border border-cyan-500 rounded-full hover:bg-cyan-500/50 transition-all font-orbitron text-lg"
-                  >
+                  <button onClick={resetGame} className="flex items-center gap-3 px-8 py-3 bg-cyan-600/30 border border-cyan-500 rounded-full hover:bg-cyan-500/50 transition-all font-orbitron text-lg text-white">
                     <RefreshCw size={24} /> REPLAY
                   </button>
                 </>
               ) : (
                 <>
                   <h2 className="text-4xl font-orbitron text-yellow-500 mb-8">PAUSED</h2>
-                  <button
-                    onClick={() => setIsPaused(false)}
-                    className="px-12 py-4 bg-yellow-600/30 border border-yellow-500 rounded-full hover:bg-yellow-500/50 transition-all font-orbitron text-xl"
-                  >
+                  <button onClick={() => setIsPaused(false)} className="px-12 py-4 bg-yellow-600/30 border border-yellow-500 rounded-full hover:bg-yellow-500/50 transition-all font-orbitron text-xl text-white">
                     RESUME
                   </button>
                 </>
@@ -299,19 +279,22 @@ const App: React.FC = () => {
           )}
         </div>
 
-        {/* Right Side: Next Piece & Info (Mobile Stats) */}
         <div className="flex flex-row md:flex-col gap-6 w-full md:w-48 justify-center items-center">
-          <div className="p-4 bg-white/5 neon-border rounded-xl backdrop-blur-md w-32 md:w-full">
-            <div className="flex items-center gap-2 mb-4 text-emerald-400">
+          <div className="p-4 bg-white/5 neon-border rounded-xl backdrop-blur-md w-32 md:w-full min-h-[140px] flex flex-col items-center justify-center">
+            <div className="flex items-center gap-2 mb-4 text-emerald-400 self-start">
               <Ghost size={20} />
               <span className="font-orbitron text-xs">NEXT</span>
             </div>
-            <div className="grid grid-cols-4 gap-1 place-items-center h-16">
+            <div
+              className="grid gap-1"
+              style={{
+                gridTemplateColumns: `repeat(${nextPiece.shape[0].length}, minmax(0, 1fr))`,
+                gridTemplateRows: `repeat(${nextPiece.shape.length}, minmax(0, 1fr))`
+              }}
+            >
               {nextPiece.shape.map((row, y) =>
-                row.map((cell, x) => cell !== 0 && (
-                  <div key={`${y}-${x}`} className={`w-3 h-3 block-${nextPiece.type} border border-white/20`}
-                    style={{ gridRow: y + 1, gridColumn: x + 1 }}
-                  />
+                row.map((cell, x) => (
+                  <div key={`${y}-${x}`} className={`w-4 h-4 md:w-5 md:h-5 ${cell !== 0 ? `block-${nextPiece.type} border border-white/20` : 'bg-transparent'}`} />
                 ))
               )}
             </div>
@@ -326,16 +309,12 @@ const App: React.FC = () => {
               <span className="text-xs font-orbitron text-purple-400">LEVEL</span>
               <span className="text-sm font-orbitron">{level}</span>
             </div>
-
-            {/* Mobile Skin Selector */}
             <div className="flex gap-2 mt-1 overflow-x-auto pb-1 no-scrollbar">
               {(Object.keys(THEMES) as Array<keyof typeof themeIcons>).map(themeId => (
                 <button
                   key={themeId}
                   onClick={() => setCurrentTheme(themeId)}
-                  className={`p-2 min-w-[36px] rounded-lg flex items-center justify-center transition-all ${currentTheme === themeId
-                    ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50'
-                    : 'bg-white/5 text-gray-500 border border-transparent hover:bg-white/10'
+                  className={`p-2 min-w-[36px] rounded-lg flex items-center justify-center transition-all ${currentTheme === themeId ? 'bg-cyan-500/20 text-cyan-400 border border-cyan-500/50' : 'bg-white/5 text-gray-500'
                     }`}
                 >
                   {themeIcons[themeId]}
